@@ -1,0 +1,208 @@
+# This file is part of bit-quark.
+#
+# Copyright (c) BitBoson
+#
+# bit-quark is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# bit-quark is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with bit-quark.  If not, see <https://www.gnu.org/licenses/>.
+#
+# Written by:
+#     - Tyler Parcell <OriginLegend>
+#
+
+# Setup the main project settings
+project:
+  type: lib
+  name: bit-quark
+  version: 1.0.0
+  source: src
+  test: test
+  targets:
+    - default
+
+# Setup the pre-test commands for setting up the environment
+commands:
+  test:
+    pre:
+      - sh scripts/prerun/1-run-minio.sh
+
+# Setup the project dependencies
+dependencies:
+
+  # Setup the external dependency: standard-model
+  - name: standard-model
+    source: git
+    url: git://github.com/bitboson/standard-model.git
+    rev: 58e061b60583185de2b6efa6a31c124d520e842b
+    type: higgs-boson
+
+  # Setup the external dependency: ZLib
+  - name: zlib
+    source: git
+    url: https://github.com/madler/zlib.git
+    rev: v1.2.11
+    type: manual
+    target default:
+      build:
+        - ./configure
+        - make
+        - mkdir -p lib
+        - cp ./*.so* lib
+      libs:
+        - lib/libz.so.1.2.11
+
+  # Setup the external dependency: OpenSSL
+  - name: openssl
+    source: git
+    url: https://github.com/openssl/openssl.git
+    rev: OpenSSL_1_1_1d
+    type: manual
+    target default:
+      build:
+        - ./Configure linux-x86_64
+        - make
+        - mkdir -p lib
+        - cp ./*.so* lib
+      libs:
+        - lib/libcrypto.so.1.1
+        - lib/libssl.so.1.1
+      include:
+        - include/
+
+  # Setup the external dependency: Curl
+  - name: curl
+    source: git
+    url: https://github.com/curl/curl.git
+    rev: curl-7_64_1
+    type: manual
+    target default:
+      build:
+        - ./buildconf
+        - ./configure
+        - make
+      libs:
+        - lib/.libs/libcurl.so.4.5.0
+      include:
+        - include/
+
+  # Setup the external dependency: AWS SDK C++
+  - name: awssdk
+    source: git
+    url: https://github.com/aws/aws-sdk-cpp.git
+    rev: 1.7.136
+    type: manual
+    target default:
+      build:
+        - mkdir -p build
+        - cd build
+        - mkdir -p libs
+        - cmake -DZLIB_LIBRARY=${HIGGS_BOSON_DEPS_DIR}/zlib/libz.so.1.2.11
+                -DZLIB_INCLUDE_DIR=${HIGGS_BOSON_DEPS_DIR}/zlib
+                -DOPENSSL_CRYPTO_LIBRARY=${HIGGS_BOSON_DEPS_DIR}/openssl/lib/libcrypto.so.1.1
+                -DOPENSSL_SSL_LIBRARY=${HIGGS_BOSON_DEPS_DIR}/openssl/lib/libssl.so.1.1
+                -DOPENSSL_INCLUDE_DIR=${HIGGS_BOSON_DEPS_DIR}/openssl/include
+                -DCURL_LIBRARY=${HIGGS_BOSON_DEPS_DIR}/curl/lib/.libs/libcurl.so.4.5.0
+                -DCURL_INCLUDE_DIR=${HIGGS_BOSON_DEPS_DIR}/curl/include
+                -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY=s3 ..
+        - make aws-cpp-sdk-s3
+        - cp aws-cpp-sdk-core/*.so libs
+        - cp aws-cpp-sdk-s3/*.so libs
+        - cp .deps/install/lib/*.so libs
+        - cp .deps/install/lib/*.so.0unstable libs
+      libs:
+        - build/libs/libaws-cpp-sdk-core.so
+        - build/libs/libaws-cpp-sdk-s3.so
+        - build/libs/libaws-c-common.so.0unstable
+        - build/libs/libaws-c-event-stream.so.0unstable
+        - build/libs/libaws-checksums.so
+      include:
+        - aws-cpp-sdk-core/include/
+        - aws-cpp-sdk-s3/include/
+
+  # Setup the external dependency: SQLite
+  - name: sqlite
+    source: curl
+    url: http://www.sqlite.org/sqlite-autoconf-3070603.tar.gz
+    unpack: tar
+    type: manual
+    target default:
+      build:
+        - cd sqlite-autoconf-3070603
+        - ./configure
+        - make
+      libs:
+        - sqlite-autoconf-3070603/.libs/libsqlite3.so.0.8.6
+      include:
+        - sqlite-autoconf-3070603
+
+  # Setup the external dependency: CPR
+  - name: cpr
+    source: git
+    url: https://github.com/whoshuu/cpr.git
+    rev: 07d784ccfe6760fc6da47c24f7326e64d8e11460
+    type: manual
+    target default:
+      build:
+        - mkdir -p build
+        - cd build
+        - cmake -DBUILD_CPR_TESTS=OFF
+                -DUSE_SYSTEM_CURL=ON -DBUILD_SHARED_LIBS=YES
+                -DOPENSSL_CRYPTO_LIBRARY=${HIGGS_BOSON_DEPS_DIR}/openssl/lib/libcrypto.so.1.1
+                -DOPENSSL_SSL_LIBRARY=${HIGGS_BOSON_DEPS_DIR}/openssl/lib/libssl.so.1.1
+                -DOPENSSL_INCLUDE_DIR=${HIGGS_BOSON_DEPS_DIR}/openssl/include
+                -DCURL_LIBRARY=${HIGGS_BOSON_DEPS_DIR}/curl/lib/.libs/libcurl.so.4.5.0
+                -DCURL_INCLUDE_DIR=${HIGGS_BOSON_DEPS_DIR}/curl/include ..
+        - make
+      libs:
+        - build/lib/libcpr.so
+      include:
+        - include/
+
+  # Setup the external dependency: RESTBed
+  - name: restbed
+    source: git
+    url: https://github.com/corvusoft/restbed.git
+    rev: 4.6
+    type: manual
+    target default:
+      build:
+        - mkdir -p build
+        - cd build
+        - cmake -DBUILD_SSL=NO
+                -DBUILD_TESTS=NO
+                -DBUILD_STATIC=NO
+                -DBUILD_SHARED=ON ..
+        - make
+      libs:
+        - build/librestbed.so.4
+      include:
+        - source/
+
+  # Setup the external dependency: RapidJSON
+  - name: rapidjson
+    source: git
+    url: https://github.com/Tencent/rapidjson.git
+    rev: v1.1.0
+    type: manual
+    target default:
+      include:
+        - include/rapidjson
+
+  # Setup the external dependency: ModernJSON
+  - name: modernjson
+    source: git
+    url: https://github.com/nlohmann/json.git
+    rev: v3.7.0
+    type: manual
+    target default:
+      include:
+        - include/
