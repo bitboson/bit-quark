@@ -30,7 +30,7 @@ job("Build the project using the higgs-boson build system") {
 
     // Build the project using the higgs-boson build system: Default Linux Binaries
     container(displayName = "Build the default bit-quark Linux Binaries",
-              image = "bitboson.registry.jetbrains.space/p/build-tools/build-tools/higgs-boson-builder") {
+              image = "bitboson.registry.jetbrains.space/p/build-tools/build-tools/higgs-boson-builder:newest") {
         shellScript {
             content = """
                 higgs-boson download internal
